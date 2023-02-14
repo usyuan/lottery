@@ -1,46 +1,126 @@
-new Vue({
-	el: '#app',
-	data: {
-		/*會員資料*/
-		member: {
-			account: '',
-			chance: 3,
-			dialogShow: false
-		},
-		/*中獎查詢*/
-		search: {
-			account: '',
-			historyList: [],
-			historyListTemp: [],
-			dialogShow: false,
-			resultShow: 0 //查詢結果，0:初始、1:有資料、2:無資料
-		},		
-		lotteryProcess: 0,//抽獎流程，0:初始、1:顯示結果
-		prize: "", //獎項
-		prizeType: 0,//獎項類型，0:初始、1:有獎、2:謝謝參加
-		pageStatus: '', //活動狀態
-		activeTimeShow: { //活動倒數時間顯示
-			day: '0',
-			hour: '0',
-			minute: '0',
-			seconds: '0'
-		},
-		activeTime: { //活動時間資料處理
-			nowTime: '',
-			endTime: '',
-			next_start_time: ''
-		},
-		activeTimeInterval: { //活動倒數時間
-			nowTime: '',
-			endTime: ''
-		},
-		checkUserLock: false, //按鍵鎖
-		luck:{}, //獎項格子設置
-	},
-	created: function () {
-		this.getActivityStatus();
+const { createApp, ref, onMounted } = Vue
+  
+createApp({
+	setup() {
+		const search = ref({ //抽獎記錄查詢
+			account: '', //會員帳號
+			historyList: [], //查詢結果
+			historyListTemp: [], //暫存抽獎記錄
+			dialogShow: false, //彈窗顯示
+			resultShow: 0, //查詢結果，0:初始、1:有資料、2:無資料
+			closeSearchDialog: function () { //關閉彈窗
+				search.value.dialogShow = false;
+				search.value.account = '';
+				search.value.historyList = [];
+				search.value.resultShow = 0;
+			},
+			searchRecords: function () {
+				search.value.historyList = (search.value.account == "shanie")? search.value.historyListTemp : [];
+				search.value.resultShow = (search.value.historyList.length > 0)? 1 : 2;
+			},
+		})
 
-		this.luck={
+		const activeTime = ref({ //活動時間資料處理
+			nowTime: '', //當前時間
+			endTime: '', //結束時間
+			nextStartTime: '', //下次開始時間
+			interval: { //活動倒數時間
+				nowTime: '',
+				endTime: ''
+			},
+			timeShow: { //活動倒數時間顯示
+				day: '0',
+				hour: '0',
+				minute: '0',
+				seconds: '0'
+			},
+			pageStatus: '', //活動狀態
+			getActivityStatus: function () { //活動狀態
+				var endTime = "2023-06-30 23:59:59";
+				activeTime.value.nowTime = new Date();
+				activeTime.value.endTime = new Date(endTime);
+				activeTime.value.pageStatus = 'in_time';
+				activeTime.value.interval.nowTime = setInterval(function () { activeTime.value.getActiveTime('ing') }, 1000);
+			},
+			getActiveTime: function (type) { //取得進行中時間
+				var pastTime = activeTime.value.nowTime.getTime();
+				var NowTime = activeTime.value.nowTime.setTime(pastTime + 1000);
+				var timeLeft = '';
+				if (type == 'ing') {
+					timeLeft = activeTime.value.endTime - NowTime;
+					if (timeLeft < 0) {
+						clearInterval(activeTime.value.interval.nowTime);
+						activeTime.value.pageStatus = 'activity_close';
+						return;
+					}
+				} else if (type == 'next_time') {
+					timeLeft = activeTime.value.nextStartTime - NowTime;
+					if (timeLeft < 0) {
+						clearInterval(activeTime.value.interval.endTime);
+						activeTime.value.pageStatus = 'activity_close';
+						return;
+					}
+				}
+				var d = Math.floor(timeLeft / 1000 / 60 / 60 / 24);
+				var h = Math.floor(timeLeft / 1000 / 60 / 60 % 24);
+				var m = Math.floor(timeLeft / 1000 / 60 % 60);
+				var s = Math.floor(timeLeft / 1000 % 60);
+				activeTime.value.timeShow.day = d;
+				activeTime.value.timeShow.hour = h;
+				activeTime.value.timeShow.minute = m;
+				activeTime.value.timeShow.seconds = s;
+			},
+		})
+
+		activeTime.value.getActivityStatus();
+
+		const member = ref({ //會員
+			account: '', //會員帳號
+			chance: 3, //抽獎次數
+			dialogShow: false, //彈窗顯示
+			checkUserLock: false, //按鍵鎖			
+			userLogin: function () { //顯示會員登入彈窗
+				if(activeTime.value.pageStatus=='in_time' && member.value.checkUserLock == false)
+					member.value.dialogShow = true;
+			},			
+			checkUser: function () { //登入會員並開始抽獎
+				const account = member.value.account;
+				if (account == "") {
+					alert("請輸入會員帳號");
+					return false;
+				}
+				
+				//判斷是否只有英文、數字與-_
+				var regex = /^[\w-]{1,}$/g;
+				var check = regex.test(account);
+				if (!check) {
+					alert("會員帳號只允許輸入英文、數字、_、-");
+					return false;
+				}
+
+				if (member.value.checkUserLock == false) {
+					member.value.checkUserLock = true;
+					if (account == "shanie") {
+						if (member.value.chance > 0) {
+							// alert("您剩餘 "+member.value.chance+" 次抽獎機會");
+							member.value.chance -= 1;
+							console.log("剩餘抽獎次數："+member.value.chance);
+							member.value.dialogShow = false;
+							luck.value.speed=100;
+							rotate(); //開始旋轉
+						} else {
+							alert("您的抽獎次數已經用完啦!");
+							member.value.checkUserLock = false;
+						}
+					}else{
+						alert("您的帳號無法參與活動!");
+						member.value.checkUserLock = false;
+					}
+				}
+			},
+		})
+
+		const luck = ref({ //獎項格子設置
 			index:-1,	//當前轉動到哪個位置，起點位置
 			count:0,	//總共有多少個位置
 			timer:0,	//setTimeout的ID，用clearTimeout清除
@@ -55,7 +135,7 @@ new Vue({
 					this.obj = $luck;
 					this.count = $units.length;
 					$luck.find(".luck-unit-"+this.index).addClass("active");
-				};
+				}
 			},				
 			roll:function(){
 				var index = this.index;
@@ -63,9 +143,7 @@ new Vue({
 				var luck = this.obj;
 				$(luck).find(".luck-unit-"+index).removeClass("active");
 				index += 1;
-				if (index>count-1) {
-					index = 0;
-				};
+				if (index>count-1) index = 0;
 				$(luck).find(".luck-unit-"+index).addClass("active");
 				this.index=index;
 				return false;
@@ -74,34 +152,39 @@ new Vue({
 				this.prize=index;
 				return false;
 			}
-		};
-	},
-	mounted: function () {
-		this.luck.init('luck');
-	},
-	watch:{
-		"member.dialogShow": function () {
-			if(!this.member.dialogShow) this.member.account = "";
-		}
-	},
-	methods: {
-		//轉格子
-		roll: function () {
-			var vm = this;				
-			this.luck.times += 1;
-			this.luck.roll();
+		})
 
-			//顯示抽獎結果
-			if (this.luck.times > this.luck.cycle+10 && this.luck.prize==this.luck.index) {					
-				clearTimeout(this.luck.timer);
-				this.luck.prize=-1;
-				this.luck.times=0;
-				this.prize = $('.luck-unit-'+this.luck.index).find('span').text(); //取得html上的獎項名稱
+		const lottery = ref({ //抽獎
+			process: 0,//抽獎流程，0:初始、1:顯示結果
+			prize: "", //獎項
+			prizeType: 0,//獎項類型，0:初始、1:有獎、2:謝謝參加
+			startLottery: function () { //開紅包
+				luck.value.prize = Math.random()*(luck.value.count)|0; //停止位置
+				lottery.value.prizeType = (luck.value.prize != 17)? 1 : 2;
+			},			
+			closeLotteryDialog: function () { //關閉抽獎彈窗
+				lottery.value.process = 0;				
+				lottery.value.prize = ""; //清空獎項
+				lottery.value.prizeType = 0;//初始化狀態
+				member.value.account = ""; //清空會員帳號
+			},
+		})
+
+		const rotate = () => { //轉格子
+			luck.value.times += 1;
+			luck.value.roll();
+			
+			if (luck.value.times > luck.value.cycle+10 && luck.value.prize==luck.value.index) {
+				//顯示抽獎結果
+				clearTimeout(luck.value.timer);
+				luck.value.prize=-1;
+				luck.value.times=0;
+				lottery.value.prize = $('.luck-unit-'+luck.value.index).find('span').text(); //取得html上的獎項名稱
 
 				var date = new Date();
-				this.search.historyListTemp.push({ //新增中獎記錄
-					gift_name: this.prize,
-					payout_status: (this.luck.index!=17)?"未領取":"-",
+				search.value.historyListTemp.push({ //新增中獎記錄
+					gift_name: lottery.value.prize,
+					payout_status: (luck.value.index!=17)?"未領取":"-",
 					pick_up_time: date.getFullYear()+"-"+(date.getMonth()+1)+ "-"+date.getDate()+" "+date.getHours()+":"+date.getMinutes()+":"+date.getSeconds()
 				})
 
@@ -110,142 +193,38 @@ new Vue({
 				music.currentTime = 0;
 				setTimeout(function(){
 					document.getElementById("music_win").play();
-					vm.lotteryProcess = 1;
-					vm.checkUserLock = false;
+					lottery.value.process = 1;
+					member.value.checkUserLock = false;
 				},100);
 			}else{
+				//開始轉動
 				document.getElementById("music_rotate").play();
-				if (this.luck.times<this.luck.cycle) {
-					//抽到前加速
-					this.luck.speed -= 10;
-				}else if(this.luck.times==this.luck.cycle) {
-					//抽獎
-					this.startLottery();
+				if (luck.value.times<luck.value.cycle) {					
+					luck.value.speed -= 10; //抽到前加速
+				}else if(luck.value.times==luck.value.cycle) {					
+					lottery.value.startLottery(); //抽獎
 				}else{
 					//抽到後減速
-					if (this.luck.times > this.luck.cycle+10 && ((this.luck.prize==0 && this.luck.index==7) || this.luck.prize==this.luck.index+1)) {
-						this.luck.speed += 110;
+					if (luck.value.times > luck.value.cycle+10 && ((luck.value.prize==0 && luck.value.index==7) || luck.value.prize==luck.value.index+1)) {
+						luck.value.speed += 110;
 					}else{
-						this.luck.speed += 20;
+						luck.value.speed += 20;
 					}
-				}
-				if (this.luck.speed<40) {
-					this.luck.speed=40;
-				};
-				
-				this.luck.timer = setTimeout(this.roll,this.luck.speed);
+				}				
+				if (luck.value.speed<40) luck.value.speed=40; //最快速度為40
+				luck.value.timer = setTimeout(rotate,luck.value.speed);
 			}
-			return false;
-		},
-		//彈出輸入會員
-		userLogin: function () {
-			if(this.pageStatus=='in_time' && this.checkUserLock == false)
-				this.member.dialogShow = true;
-		},
-		//檢查帳戶輸入
-		checkUser: function () {
-			var vm = this, account;
-			account = vm.member.account;
-			if (vm.verification(account, "會員帳號") == false) return false;
-			if (vm.checkUserLock == false) {
-				vm.checkUserLock = true;
-				if (account == "shanie") {
-					if (vm.member.chance > 0) {
-						// alert("您剩餘 "+vm.member.chance+" 次抽獎機會");
-						vm.member.chance -= 1;
-						console.log("剩餘抽獎次數："+vm.member.chance);
-						vm.member.dialogShow = false;
-						vm.luck.speed=100;
-						vm.roll(); //開始旋轉
-					} else {
-						alert("您的抽獎次數已經用完啦!");
-						vm.checkUserLock = false;
-					}
-				}else{
-					alert("您的帳號無法參與活動!");
-					vm.checkUserLock = false;
-				}
-			}
-		},
-		//開紅包
-		startLottery: function () {
-			var vm = this, account;
-			account = this.member.account;
-			vm.luck.prize = Math.random()*(this.luck.count)|0; //停止位置
-			vm.prizeType = (vm.luck.prize != 17)? 1 : 2; //1=有獎，2=謝謝參加
-		},
-		//關閉抽獎彈窗
-		closeLotteryDialog: function () {
-			this.lotteryProcess = 0;
-			this.member.account = ""; //清空會員帳號
-			// this.member.chance = 0; //清空抽獎次數
-			this.prize = ""; //清空獎項
-			this.prizeType = 0;//初始化狀態
-		},
-		//中獎查詢
-		searchRecords: function () {
-			this.search.historyList = (this.search.account == "shanie")? this.search.historyListTemp : [];
-			this.search.resultShow = (this.search.historyList.length > 0)? 1 : 2;
-		},
-		closeSearchDialog: function () {
-			this.search.dialogShow = false;		
-			this.search.account = '';//清空查詢帳號
-			this.search.historyList = [];//清空查詢資料
-			this.search.resultShow = 0;//初始化			
-		},
-		//活動狀態
-		getActivityStatus: function () {
-			var vm = this;
-			var endTime = "2023-06-30 23:59:59";
-			vm.activeTime.nowTime = new Date(); //當前時間
-			vm.activeTime.endTime = new Date(endTime); //結束時間
-			vm.pageStatus = 'in_time';
-			vm.activeTimeInterval.nowTime = setInterval(function () { vm.getActiveTime('ing') }, 1000);
-		},
-		//取得進行中時間
-		getActiveTime: function (type) {
-			var vm = this;
-			var t_s = vm.activeTime.nowTime.getTime();
-			var NowTime = vm.activeTime.nowTime.setTime(t_s + 1000);
-			var t = '';
-			if (type == 'ing') {
-				t = vm.activeTime.endTime - NowTime;
-				if (t < 0) {
-					clearInterval(vm.activeTimeInterval.nowTime);
-					vm.pageStatus = 'activity_close';
-					return;
-				}
-			} else if (type == 'next_time') {
-				t = vm.activeTime.next_start_time - NowTime;
-				if (t < 0) {
-					clearInterval(vm.activeTimeInterval.endTime);
-					vm.pageStatus = 'activity_close';
-					return;
-				}
-			}
-			var d = Math.floor(t / 1000 / 60 / 60 / 24);
-			var h = Math.floor(t / 1000 / 60 / 60 % 24);
-			var m = Math.floor(t / 1000 / 60 % 60);
-			var s = Math.floor(t / 1000 % 60);
-			vm.activeTimeShow.day = d;
-			vm.activeTimeShow.hour = h;
-			vm.activeTimeShow.minute = m;
-			vm.activeTimeShow.seconds = s;
-		},	
-		//驗證輸入是否有不符規定的文字
-		verification: function (data, field) {
-			if (data == "") {
-				alert(field + '不能為空!');
-				return false;
-			}
-			
-			//判斷是否只有英文、數字與-_
-			var regex = /^[\w-]{1,}$/g;
-			var check = regex.test(data);
-			if (!check) {
-				alert(field + "只允許輸入英文、數字、_、-");
-				return false;
-			}
-		},
-	},		
-});
+		}
+
+		onMounted(()=>{
+			luck.value.init('luck');
+		})
+
+		return {
+			search,
+			activeTime,
+			member,
+			lottery,
+		}
+	}
+}).mount('#app')

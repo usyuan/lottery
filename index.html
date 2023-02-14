@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8">
 <title>幸運轉大獎 - SHANIE DEMO</title>
-<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon">
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
 <meta name="renderer" content="webkit">
 <meta name="viewport" content="initial-scale=1.0, user-scalable=yes">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/style.css">
-<script src="js/jquery-1.8.3.min.js"></script>
 </head>
 <body>
 <div id="app" v-cloak>
@@ -18,11 +17,7 @@
 			<div class="hInner clearfix">
 				<div class="logo"><a href="index.html"><img src="images/logo.png" alt=""></a></div>
 				<ul class="clearfix">
-					<!-- <li class="li01"><a href="index.html"><span>首&nbsp;&nbsp;頁</span></a></li> -->
 					<li class="li02"><a href="javascript:;" @click="search.dialogShow = true"><span>中獎查詢</span></a></li>
-					<!-- <li class="li03"><a href="#"><span>優惠活動</span></a></li> -->
-					<!-- <li class="li04"><a href="#"><span>APP下載</span></a></li> -->
-					<!-- <li class="li05"><a href="#"><span>在線客服</span></a></li> -->
 				</ul>
 			</div>
 		</div>
@@ -46,23 +41,23 @@
 								<div class="box">
 									<div class="img">
 										<img src="images/img05.png" alt="">
-										<a href="javascript:;" @click="userLogin" class="cjBtn" :class="(pageStatus!='in_time')?'filter_gray':''"><img src="images/btn.png"></a>
+										<a href="javascript:;" @click="member.userLogin" :class="(activeTime.pageStatus!='in_time')?'filter_gray':''"><img src="images/btn.png"></a>
 									</div>
 
 									<!-- 進行中 -->
-									<div class="dateBox clearfix" v-show="pageStatus=='in_time'">
+									<div class="dateBox clearfix" v-show="activeTime.pageStatus=='in_time'">
 										<p class="txt"><img src="images/img06.png" alt="">距離活動結束倒計時</p>
-										<p class="date"><span id="date01">{{activeTimeShow.day}}</span>天<span id="date02">{{activeTimeShow.hour}}</span>時<span id="date03">{{activeTimeShow.minute}}</span>分<span id="date04">{{activeTimeShow.seconds}}</span>秒</p>
+										<p class="date"><span id="date01">{{activeTime.timeShow.day}}</span>天<span id="date02">{{activeTime.timeShow.hour}}</span>時<span id="date03">{{activeTime.timeShow.minute}}</span>分<span id="date04">{{activeTime.timeShow.seconds}}</span>秒</p>
 									</div>
 
 									<!-- 下一波倒計時 -->
-									<div class="dateBox clearfix" v-show="pageStatus=='not in time'">
+									<div class="dateBox clearfix" v-show="activeTime.pageStatus=='not in time'">
 										<p class="txt"><img src="images/img06.png" alt="">距離活動開始倒計時</p>
-										<p class="date"><span id="date01">{{activeTimeShow.day}}</span>天<span id="date02">{{activeTimeShow.hour}}</span>時<span id="date03">{{activeTimeShow.minute}}</span>分<span id="date04">{{activeTimeShow.seconds}}</span>秒</p>
+										<p class="date"><span id="date01">{{activeTime.timeShow.day}}</span>天<span id="date02">{{activeTime.timeShow.hour}}</span>時<span id="date03">{{activeTime.timeShow.minute}}</span>分<span id="date04">{{activeTime.timeShow.seconds}}</span>秒</p>
 									</div>
 
 									<!-- 活動結束 -->
-									<div id="hb_end" v-show="pageStatus=='activity_close'">
+									<div id="hb_end" v-show="activeTime.pageStatus=='activity_close'">
 										<div class="txt">活動今日已結束</div>
 									</div>
 								</div>
@@ -99,8 +94,8 @@
 	<transition name="fade">
 		<div class="pop" v-show="member.dialogShow">
 			<div class="close close_btn" @click="member.dialogShow = false"><img src="images/close2.png" alt=""></div>
-			<input id="user_name" class="user_name" value="" placeholder="輸入會員帳號" type="text" v-model.trim="member.account">
-			<input class="tcsub" id="btn" value="登入" type="submit" @click="checkUser">
+			<input id="user_name" class="user_name" value="" placeholder="請輸入會員帳號" type="text" v-model.trim="member.account">
+			<input class="tcsub" id="btn" value="登入" type="submit" @click="member.checkUser">
 		</div>			
 	</transition>
 	<div class="cover" v-show="member.dialogShow" @click="member.dialogShow = false"></div>	
@@ -108,23 +103,23 @@
 
 	<!-- 中獎結果 -->
 	<transition name="fade">
-		<div class="popBox" v-show="lotteryProcess > 0">
+		<div class="popBox" v-show="lottery.process > 0">
 			<div class="img"><img src="images/pop_img.png" alt="">
-				<p v-if="prizeType == 1">恭喜您獲得<br><span class="txt">{{prize}}</span></p>
-				<p v-else>{{prize}}</p>
+				<p v-if="lottery.prizeType == 1">恭喜您獲得<br><span class="txt">{{lottery.prize}}</span></p>
+				<p v-else>{{lottery.prize}}</p>
 			</div>
-			<div class="close close_btn" @click="closeLotteryDialog"><img src="images/close.png" alt=""></div>
+			<div class="close close_btn" @click="lottery.closeLotteryDialog"><img src="images/close.png" alt=""></div>
 		</div>
 	</transition>
-	<div class="cover popBox_cover" v-show="lotteryProcess > 0" @click="closeLotteryDialog"></div>
+	<div class="cover popBox_cover" v-show="lottery.process > 0" @click="lottery.closeLotteryDialog"></div>
 	<!-- /中獎結果 -->
 
 	<!-- 中獎查詢 -->
-	<transition name="fade">
+	<Transition>
 		<div class="searchBox" v-show="search.dialogShow">
-			<div class="close close_btn" @click="closeSearchDialog"><img src="images/close02.png" alt=""></div>
+			<div class="close close_btn" @click="search.closeSearchDialog"><img src="images/close02.png" alt=""></div>
 			<p>中獎查詢</p>
-			<div class="search"><input type="text" placeholder="请输入会员账号" onfocus="if(this.placeholder=='请输入会员账号')this.placeholder=''" onblur="if(this.placeholder =='') this.placeholder ='请输入会员账号'" v-model="search.account"><a href="javascript:;" @click="searchRecords"><img src="images/btn02.png" alt=""></a></div>
+			<div class="search"><input type="text" placeholder="請輸入會員帳號" onfocus="if(this.placeholder=='請輸入會員帳號') this.placeholder=''" onblur="if(this.placeholder =='') this.placeholder ='請輸入會員帳號'" v-model="search.account"><a href="javascript:;" @click="search.searchRecords"><img src="images/btn02.png" alt=""></a></div>
 			<table>
 					<tr>
 						<th width="33%">獎項名稱</th>
@@ -140,21 +135,16 @@
 						<td colspan='3'>查無資料</td>
 					</tr>
 			</table>
-			<div class="center" v-show="search.resultShow==1">
-				<div id="pages">
-				</div>
-			</div>
 		</div>
-	</transition>
-	<div class="cover searchBox_cover" v-show="search.dialogShow"  @click="closeSearchDialog"></div>
+	</Transition>
+	<div class="cover searchBox_cover" v-show="search.dialogShow"  @click="search.closeSearchDialog"></div>
 	<!-- /中獎查詢 -->
 
 	<audio id="music_win" src="win.mp3">你的瀏覽器不支持audio標籤。</audio>
 	<audio id="music_rotate" src="rotate.mp3">你的瀏覽器不支持audio標籤。</audio>
 </div>
-<script src="libs/vue.min.js"></script>
-<script src="libs/browser-polyfill.min.js"></script>
-<script src="libs/axios.min.js"></script>
-<script src="libs/main.js" type="text/javascript"></script>
+<script src="libs/jquery-1.8.3.min.js"></script>
+<script src="libs/vue.global.prod.min.js"></script>
+<script src="libs/main.js"></script>
 </body>
 </html>
